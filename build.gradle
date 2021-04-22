@@ -1,0 +1,53 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.4.31'
+}
+
+group 'com.baraddur'
+version '1.0'
+
+apply plugin: 'application'
+
+mainClassName = "com.baraddur.labyrinth.MainKt"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    implementation "com.sparkjava:spark-kotlin:1.0.0-alpha"
+    implementation 'com.sparkjava:spark-template-thymeleaf:2.7.1'
+    implementation "ch.qos.logback:logback-classic:1.2.3"
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.11.0'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.11.0'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.11.0'
+    implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.11.0'
+    implementation 'org.apache.httpcomponents:fluent-hc:4.5.8'
+    implementation 'org.apache.httpcomponents:httpmime:4.5.8'
+    implementation 'commons-io:commons-io:2.8.0'
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.4.2"
+}
+
+jar {
+    dependsOn("copyRuntimeLibs")
+    manifest {
+        attributes("Implementation-Title": project.name,
+                "Implementation-Version": archiveVersion.getOrNull(),
+                "Main-Class": mainClassName,
+                "Class-Path": configurations.runtimeClasspath.files.collect { "lib/" + it.getName() }.join(' '))
+    }
+}
+
+task copyRuntimeLibs(type: Copy) {
+    into "$buildDir/libs/lib"
+    from configurations.runtimeClasspath
+}
+
+wrapper {
+    gradleVersion = '6.8.3'
+}
+
+test {
+    useJUnitPlatform()
+}

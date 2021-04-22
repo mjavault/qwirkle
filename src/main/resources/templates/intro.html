@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<header>
+    <title>Qwirkle</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="css/game.css" rel="stylesheet"/>
+</header>
+<body class="bg-light">
+
+<div class="container">
+    <main>
+        <div class="py-5 text-center">
+            <h2>Qwirkle</h2>
+        </div>
+
+        <div class="row">
+            <div class="col-6">
+
+                <h4 class="mb-3">Join a game</h4>
+                <form id="frmJoinGame">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="inGameId" class="form-label">Enter an existing game id:</label>
+                            <input type="text" class="form-control" id="inGameId" placeholder="">
+                        </div>
+                    </div>
+                    <button class="mt-3 btn btn-secondary btn-lg" type="submit">Join</button>
+                </form>
+
+            </div>
+            <div class="col-6">
+
+                <h4 class="mb-3">Create a new game</h4>
+                <form id="frmCreateGame">
+                    <button class="mt-3 btn btn-secondary btn-lg" type="submit">Create</button>
+                </form>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="js/jquery-3.2.1.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $("#frmCreateGame").on("submit", function (e) {
+            e.preventDefault();
+            $.ajax({
+                url: "/api/game",
+                method: "POST"
+            }).done(function (data) {
+                window.location.href = `game?id=${data.gameId}`;
+            });
+        });
+        $("#frmJoinGame").on("submit", function (e) {
+            e.preventDefault();
+            const gameId = $("#inGameId").val();
+            console.log(gameId);
+            window.location.href = `game?id=${gameId}`;
+        });
+    });
+</script>
+</body>
+</html>

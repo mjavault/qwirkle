@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<header>
+    <title>Qwirkle</title>
+    <script defer src="/js/all.js"></script> <!-- Font-awesome -->
+    <link href="css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="css/game.css" rel="stylesheet"/>
+</header>
+<body class="bg-light">
+
+<div class="container-fluid">
+    <main>
+
+        <div class="row text-center" id="uiWaitingRoom">
+            <div class="py-5 text-center">
+                <h2>Qwirkle</h2>
+            </div>
+            <div class="justify-content-center" id="uiWaitingRoomLoader">
+                <div class="spinner-grow text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <div class="col-12" id="uiWaitingRoomDetails" style="display: none;">
+                <div>Please enter a name and select a color to join the game:</div>
+                <input type="text" value="Player" id="txtPlayerName"/>
+                <table class="waiting-room m-auto">
+                    <tr>
+                        <td class="user" data-color="GREEN"><img src="img/player/GREEN.png" alt="Green"/></td>
+                        <td class="user" data-color="YELLOW"><img src="img/player/YELLOW.png" alt="Yellow"/></td>
+                    </tr>
+                    <tr>
+                        <td class="user" data-color="RED"><img src="img/player/RED.png" alt="Red"/></td>
+                        <td class="user" data-color="BLUE"><img src="img/player/BLUE.png" alt="Blue"/></td>
+                    </tr>
+                </table>
+                <button type="button" class="btn btn-primary" id="btnStartGame">Join</button>
+            </div>
+        </div>
+
+        <div class="row" id="uiGame" style="display: none;">
+            <div class="col-12 col-xl-10">
+                <table id="board" class="board">
+                </table>
+                <div class="footer">
+                    <div class="float-end">
+                        <button class="btn btn-secondary" id="btnTrade">Trade</button>
+                        <button class="btn btn-secondary" id="btnClear">Clear</button>
+                        <button class="btn btn-secondary" id="btnCommit">Play</button>
+                        <br/>
+                        <div class="remaining"></div>
+                    </div>
+                    <div class="hand"></div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-2">
+                <h1 class="d-none d-xl-block">Qwirkle</h1>
+                <div id="players" class="row"></div>
+            </div>
+        </div>
+
+    </main>
+</div>
+<div id="play-overlay" style="display: none;">
+    <div class="play left"><a class="fas fa-chevron-left"></a></div>
+    <div class="play right"><a class="fas fa-chevron-right"></a></div>
+    <div class="play up"><a class="fas fa-chevron-up"></a></div>
+    <div class="play down"><a class="fas fa-chevron-down"></a></div>
+</div>
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5" id="toasts">
+</div>
+<div id="templates" style="display: none;">
+    <div class="col-3 col-xl-12" id="templatePlayer">
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="score float-end"></div>
+                        <div class="name mb-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="templateToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto toast-title">title</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">message</div>
+    </div>
+</div>
+
+<script src="js/bootstrap.min.js"></script>
+<script src="js/WebSocketClient.js"></script>
+<script src="js/jquery-3.2.1.min.js"></script>
+<script src="js/jquery-ui.min.js"></script>
+<script th:inline="javascript">
+    let ws = new WebSocketClient()
+    ws.debug = true;
+    const gameId = /*[[${gameId}]]*/ 0;
+    const state = {
+        built: false,
+        localPlayers: [],
+        isCurrentPlayerLocal: false,
+        direction: "DOWN"
+    };
+
+    $(document).ready(function () {
+        //read previous name from cookie
+        loadUsernameFromCookies();
+
+        //join
+        $(".waiting-room").find(".user").on("click", function (e) {
+            const $td = $(this);
+            const color = $td.data("color");
+            if ($td.hasClass("joined") || $td.hasClass("remote")) {
+                //we are joining as an existing player
+                $td.removeClass("remote").addClass("joined");
+                state.localPlayers.push(color);
+                ws.send("/api/game/refresh");
+            } else {
+                //we are joining as a new player
+                const unsafeName = $("#txtPlayerName").val();
+                const name = $('<div>').text(unsafeName).html();
+                join(color, name);
+                writeUsernameToCookies(name);
+            }
+        });
+
+        //wait
+        $("#btnStartGame").on("click", function () {
+            if (state.localPlayers.length > 0) {
+                start();
+            }
+        });
+
+        //drag and drop
+        $(".hand").sortable({
+            update: function (event, ui) {
+            }
+        });
+
+        //play
+        $("#btnCommit").on("click", function () {
+            commit();
+        });
+        $("#btnTrade").on("click", function () {
+            userTradeSelection();
+        });
+        $("#btnClear").on("click", function () {
+            abort();
+        });
+
+        $(window).on('resize', function () {
+            const $window = $(this);
+            const $table = $("#board");
+            const $parent = $table.parent();
+            $parent.css("overflow", "hidden");
+            const maxSize = Math.min($window.height(), $parent.width());
+            const count = $table.find("tr:first").find("td").length;
+            const tileSize = Math.min(64, maxSize / count);
+            $table.find("td").css("height", `${tileSize}px`).css("width", `${tileSize}px`);
+        });
+
+        uiStepInitial();
+        ws.onMessage = (event) => {
+            if (event.game) {
+                updateBoard(event.game);
+                updatePlayersWaitingScreen(event.game);
+            }
+            if (event.error) {
+                console.log(`Error: ${event.error}`);
+                toast("error", "Error", event.error);
+            }
+            if (event.info) {
+                console.log(`Info: ${event.info}`);
+                toast("info", "Info", event.info);
+            }
+            if (event.hover) {
+                const $board = $("#board");
+                const color = event.hover.color.toLowerCase();
+                $board.find(`.hover.${color}`).removeClass(`hover ${color}`);
+                if (event.hover.target) {
+                    const $td = $(`#${event.hover.target}`);
+                    $td.addClass(`hover ${color}`);
+                }
+            }
+            if (event.reload) {
+                window.location.reload();
+            }
+        }
+        ws.onConnect = () => {
+            ws.send("/api/register", {gameId: gameId});
+            uiStepConnected();
+        }
+        ws.connect();
+    });
+
+    function uiStepInitial() {
+        $("#uiWaitingRoom").show();
+        $("#uiWaitingRoomLoader").show();
+        $("#uiWaitingRoomDetails").hide();
+        $("#uiGame").hide();
+        $(window).trigger('resize');
+    }
+
+    function uiStepConnected() {
+        $("#uiWaitingRoom").show();
+        $("#uiWaitingRoomLoader").hide();
+        $("#uiWaitingRoomDetails").show();
+        $("#uiGame").hide();
+        $(window).trigger('resize');
+    }
+
+    function uiStepPlaying() {
+        $("#uiWaitingRoom").hide();
+        $("#uiGame").show();
+        $(window).trigger('resize');
+    }
+
+    function join(color, name) {
+        state.localPlayers.push(color);
+        ws.send("/api/game/join", {color: color, name: name});
+    }
+
+    function start() {
+        uiStepPlaying();
+    }
+
+    function play(tiles, x, y, direction) {
+        if (state.isCurrentPlayerLocal) {
+            ws.send("/api/game/turn/play", {tiles: tiles, x: x, y: y, direction: direction});
+        }
+    }
+
+    function commit() {
+        if (state.isCurrentPlayerLocal) {
+            ws.send("/api/game/turn/commit");
+        }
+    }
+
+    function abort() {
+        if (state.isCurrentPlayerLocal) {
+            ws.send("/api/game/turn/abort");
+        }
+    }
+
+    function trade(tiles) {
+        if (state.isCurrentPlayerLocal) {
+            ws.send("/api/game/turn/trade", {tiles: tiles});
+        }
+    }
+
+    function getSelection() {
+        return $(".footer .holder.selected .tile").map(function () {
+            return this.id
+        }).get();
+    }
+
+    function userPlaySelection(x, y, direction) {
+        if (state.isCurrentPlayerLocal) {
+            const tiles = getSelection();
+            play(tiles, x, y, direction);
+        }
+    }
+
+    function userTradeSelection() {
+        if (state.isCurrentPlayerLocal) {
+            const tiles = getSelection();
+            trade(tiles);
+        }
+    }
+
+    function showPlayOverlay($tile, x, y) {
+        const $overlay = $("#play-overlay").show();
+        $tile.append($overlay);
+        const $up = $overlay.find(".play.up")
+        $up.css("left", ($tile.width() / 2) - ($up.width() / 2))
+            .off("click").on("click", () => userPlaySelection(x, y, "UP"));
+        const $down = $overlay.find(".play.down")
+        $down.css("left", ($tile.width() / 2) - ($down.width() / 2))
+            .off("click").on("click", () => userPlaySelection(x, y, "DOWN"));
+        const $left = $overlay.find(".play.left")
+        $left.css("top", ($tile.height() / 2) - ($left.height() / 2))
+            .off("click").on("click", () => userPlaySelection(x, y, "LEFT"));
+        const $right = $overlay.find(".play.right")
+        $right.css("top", ($tile.height() / 2) - ($right.height() / 2))
+            .off("click").on("click", () => userPlaySelection(x, y, "RIGHT"));
+    }
+
+    function updatePlayersWaitingScreen(game) {
+        const $table = $("#uiWaitingRoom").find("table");
+        $.each(game.players, function (i, player) {
+            const $td = $table.find(`td[data-color=${player.color}]`);
+            let $div = $td.find("div.name");
+            if ($div.length === 0) {
+                $div = $('<div class="name"></div>');
+                $td.append($div);
+            }
+            $div.text(player.name);
+            if (state.localPlayers.includes(player.color)) {
+                $td.addClass("joined");
+            } else {
+                $td.addClass("remote");
+            }
+        });
+    }
+
+    function createTile(tile) {
+        function shape(name) {
+            if (name === "CIRCLE") {
+                return '<i class="fas fa-circle fa-fw w100"></i>';
+            } else if (name === "CRISSCROSS") {
+                return '<i class="fas fa-times fa-fw w100"></i>';
+            } else if (name === "DIAMOND") {
+                return '<i class="fas fa-gem fa-fw w100"></i>';
+            } else if (name === "SQUARE") {
+                return '<i class="fas fa-square fa-fw w100"></i>';
+            } else if (name === "STARBURST") {
+                return '<i class="fas fa-bahai fa-fw w100"></i>';
+            } else if (name === "CLOVER") {
+                return '<i class="fas fa-leaf fa-fw w100"></i>';
+            }
+        }
+
+        const $tile = $(`<div class="tile"></div>`).attr("id", tile.id);
+        const $shape = $(shape(tile.shape));
+        $shape.addClass(tile.color.toLowerCase());
+        $tile.append($shape);
+        return $tile;
+    }
+
+    function expandBoard(target) {
+        function tileHolder(x, y) {
+            return $('<td></td>').data("x", x).data("y", y)
+                .attr("id", `tile_${x}_${y}`)
+                .append('<div class="placeholder"></div>')
+                .on("click", function (e) {
+                    const selection = getSelection();
+                    if (selection.length === 1) {
+                        play(selection, x, y, "DOWN");
+                    }
+                    showPlayOverlay($(this), x, y);
+                });
+        }
+
+        //read the current state of the board
+        const $board = $("#board");
+        const topLeft = $board.find("tr:first td:first");
+        const bottomRight = $board.find("tr:last td:last");
+        const bounds = {
+            top: topLeft.data("y") || 1,
+            left: topLeft.data("x") || 1,
+            right: bottomRight.data("x") || 0,
+            bottom: bottomRight.data("y") || 0
+        };
+
+        //pad the target with n blocks in any direction, and do not reduce the size of the board
+        const pad = 1;
+        target.top = Math.min(Math.min(target.top - pad, bounds.top), -6);
+        target.left = Math.min(Math.min(target.left - pad, bounds.left), -6);
+        target.bottom = Math.max(Math.max(target.bottom + pad, bounds.bottom), 6);
+        target.right = Math.max(Math.max(target.right + pad, bounds.right), 6);
+
+        //insert all extra columns first, since they belong to existing rows
+        $board.find("tr").each(function (i, row) {
+            const $row = $(row);
+            const y = $(row).data("y");
+            for (let x = bounds.left - 1; x >= target.left; x--) {
+                $row.prepend(tileHolder(x, y));
+            }
+            for (let x = bounds.right + 1; x <= target.right; x++) {
+                $row.append(tileHolder(x, y));
+            }
+        });
+        //then insert new rows, prepopulated with empty columns
+        for (let y = bounds.top - 1; y >= target.top; y--) {
+            const $row = $("<tr></tr>").data("y", y);
+            for (let x = target.left; x <= target.right; x++) {
+                $row.append(tileHolder(x, y));
+            }
+            $board.prepend($row);
+        }
+        for (let y = bounds.bottom + 1; y <= target.bottom; y++) {
+            const $row = $("<tr></tr>").data("y", y);
+            for (let x = target.left; x <= target.right; x++) {
+                $row.append(tileHolder(x, y));
+            }
+            $board.append($row);
+        }
+        //hover
+        $board.find("td").off('mouseenter mouseleave').on('mouseenter', function (e) {
+            const color = state.localPlayers[0];
+            const $this = $(this);
+            $this.addClass(`hover ${color.toLowerCase()}`);
+            ws.send("/api/game/ui/hover", {target: $this.attr("id"), color: color});
+        }).on('mouseleave', function (e) {
+            const color = state.localPlayers[0];
+            $(this).removeClass(`hover ${color.toLowerCase()}`);
+        });
+        $board.off('mouseleave').on('mouseleave', function (e) {
+            const color = state.localPlayers[0];
+            ws.send("/api/game/ui/hover", {target: null, color: state.localPlayers[0]});
+            $(this).removeClass(`hover ${color.toLowerCase()}`);
+        });
+
+        //trigger a resize
+        $(window).trigger('resize');
+    }
+
+    function updateBoard(game) {
+        const $board = $("#board");
+
+        //extend the board as needed
+        expandBoard(game.board.bounds);
+
+        //remove any pending tiles, they might have moved or been deleted
+        $board.find(".tile.pending").remove();
+        //populate board
+        $.each(game.board.tiles, function (i, placed) {
+            let $tile = $board.find(`#${placed.tile.id}`);
+            if ($tile.length === 0) {
+                $tile = createTile(placed.tile);
+            }
+            if (placed.error) {
+                $tile.addClass("error");
+            } else {
+                $tile.removeClass("error");
+            }
+            if (placed.pending) {
+                $tile.addClass("pending");
+            } else {
+                $tile.removeClass("pending");
+            }
+            $board.find(`#tile_${placed.location.x}_${placed.location.y}`).append($tile);
+        });
+
+        //number of tiles left
+        $(".footer .remaining").html(`${game.bag.length} tiles remaining`);
+
+        //players
+        const $players = $("#players");
+        $.each(game.players, function (i, player) {
+            //player details
+            let $player = $players.find(`[data-color=${player.color}]`);
+            if ($player.length === 0) {
+                const $template = $("#templatePlayer").clone().removeAttr("id");
+                $players.append($template);
+                $player = $template.find(".card").attr("data-color", player.color);
+                $player.find(".name").html(`<span class="${player.color.toLowerCase()}">&#11044;</span>&nbsp;<span>${player.name}</span>&nbsp;<span class="player-status"></span>`);
+            }
+            $player.find(".score").html(`${player.score} points`);
+            if (i === game.currentPlayerId) {
+                $player.addClass("active");
+            } else {
+                $player.removeClass("active");
+            }
+
+            //current player hand
+            if (state.localPlayers.includes(player.color)) {
+                const $hand = $(".hand");
+                //delete tiles that are not in the hand anymore
+                $hand.find(".tile").each(function (i, tile) {
+                    if (!player.hand.find(t => t.id === tile.id)) {
+                        $(tile).parent(".holder").remove();
+                    }
+                });
+                //insert to the right any new tiles
+                $.each(player.hand, function (i, tile) {
+                    if ($hand.find(`#${tile.id}`).length === 0) {
+                        const $container = $('<div class="holder" draggable="true"></div>');
+                        $container.append(createTile(tile));
+                        $container.on("click", function (e) {
+                            const $this = $(this);
+                            if ($this.hasClass("selected")) {
+                                $this.removeClass("selected");
+                            } else {
+                                $this.addClass("selected");
+                            }
+                        });
+                        $hand.append($container);
+                    }
+                });
+            }
+        });
+
+        //local player
+        if (game.players.length > 0) {
+            state.isCurrentPlayerLocal = state.localPlayers.includes(game.currentPlayer.color);
+        }
+
+        //game over
+        if (game.gameOver) {
+            $("#btnEndTurn")
+                .text("New game")
+                .removeClass("btn-secondary")
+                .addClass("btn-primary")
+                .off("click").on("click", function () {
+                window.location.href = "new";
+            });
+        }
+    }
+
+    function loadUsernameFromCookies() {
+        const name = getCookie("_qwirkle_player");
+        if (name) {
+            $("#txtPlayerName").val(name);
+        }
+    }
+
+    function writeUsernameToCookies(name) {
+        setCookie("_qwirkle_player", name, 30)
+    }
+</script>
+<script type="text/javascript">
+    function setCookie(key, value, expiry_days) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (expiry_days * 24 * 60 * 60 * 1000));
+        document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}`;
+    }
+
+    function getCookie(key) {
+        const groups = document.cookie.match(`(^|;) ?${key}=([^;]*)(;|$)`);
+        return groups ? decodeURIComponent(groups[2]) : null;
+    }
+</script>
+<script>
+    function toast(level, title, message) {
+        const $holder = $("#toasts");
+        const $toast = $("#templateToast").clone().removeAttr("id");
+        let bgClass;
+        if (level === "error") {
+            bgClass = "bg-danger";
+        } else if (level === "warn") {
+            bgClass = "bg-warning";
+        } else if (level === "info") {
+            bgClass = "bg-info";
+        } else {
+            bgClass = "bg-primary";
+        }
+        $toast.find(".toast-header").addClass(`text-white ${bgClass}`);
+        $toast.find(".toast-title").html(title);
+        $toast.find(".toast-body").html(message);
+        $holder.append($toast);
+        const toast = new bootstrap.Toast($toast.get(0), {
+            animation: true,
+            autohide: true,
+            delay: 10000
+        });
+        toast.show();
+    }
+</script>
+</body>
+</html>
