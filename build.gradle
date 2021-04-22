@@ -7,7 +7,7 @@ version '1.0'
 
 apply plugin: 'application'
 
-mainClassName = "com.baraddur.labyrinth.MainKt"
+mainClassName = "com.baraddur.qwirkle.MainKt"
 
 repositories {
     mavenCentral()
