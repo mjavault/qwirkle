@@ -136,8 +136,7 @@
 
         //drag and drop
         $(".hand").sortable({
-            update: function (event, ui) {
-            }
+            axis: "x"
         });
 
         //play
@@ -472,6 +471,8 @@
                         $container.append(createTile(tile));
                         $container.on("click", function (e) {
                             const $this = $(this);
+                            // bugfix for the sortable() call forcing css styles
+                            $this.css("top", "");
                             if ($this.hasClass("selected")) {
                                 $this.removeClass("selected");
                             } else {
