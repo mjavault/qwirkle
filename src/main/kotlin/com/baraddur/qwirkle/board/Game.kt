@@ -15,6 +15,7 @@ class Game {
     val players = LinkedList<Player>()
     var currentPlayerId: Int = 0
     var pendingScore: Int = 0
+    val moves = ArrayList<Move>()
 
     init {
         Tile.Color.values().forEach { color ->
@@ -103,6 +104,9 @@ class Game {
             val player = players[currentPlayerId]
             player.score += pendingScore
             player.hand.removeAll(board.getPendingTiles())
+            //keep track of the moves
+            moves.add(Move(player, board.getPendingTiles()))
+            //commit the play
             board.commit()
             endTurn()
         } else {

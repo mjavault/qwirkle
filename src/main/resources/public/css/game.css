@@ -114,7 +114,7 @@
 }
 
 .orange {
-    color: #ffa200;
+    color: #ff8900;
 }
 
 .purple {
@@ -129,19 +129,19 @@
     border: 4px solid #ffc212;
 }
 
-.hover.green .tile, .hover.green .placeholder {
+.hover.green .tile, .hover.green .placeholder, .highlight.green {
     border-color: #1bb62a;
 }
 
-.hover.red .tile, .hover.red .placeholder {
+.hover.red .tile, .hover.red .placeholder, .highlight.red {
     border-color: #ff0000;
 }
 
-.hover.yellow .tile, .hover.yellow .placeholder {
+.hover.yellow .tile, .hover.yellow .placeholder, .highlight.yellow {
     border-color: #ffc212;
 }
 
-.hover.blue .tile, .hover.blue .placeholder {
+.hover.blue .tile, .hover.blue .placeholder, .highlight.blue {
     border-color: #1e6aff;
 }
 
