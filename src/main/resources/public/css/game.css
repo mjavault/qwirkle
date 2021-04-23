@@ -53,6 +53,7 @@
 
 .board {
     margin: auto;
+    border: 1px solid #e5e5e5;
 }
 
 .board td {
@@ -61,10 +62,6 @@
 }
 
 .board td {
-    border: 1px solid #ffffff00;
-}
-
-.board:hover td {
     border: 1px solid #e5e5e5;
 }
 
