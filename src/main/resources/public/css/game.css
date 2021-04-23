@@ -156,7 +156,6 @@
     right: 0;
     height: 100px;
     border: 1px solid #9A9A9A;
-    background-color: #eee;
     border-radius: 4px;
 }
 
@@ -207,4 +206,21 @@
 
 #play-overlay .play.down {
     bottom: -28px;
+}
+
+.game-over {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #cccccc69;
+    text-align: center;
+}
+
+.game-over div {
+    position: absolute;
+    top: 40%;
+    left: 40%;
+    font-size: 24pt;
 }

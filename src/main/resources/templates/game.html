@@ -48,6 +48,10 @@
                         <button class="btn btn-secondary" id="btnCommit">Play</button>
                         <br/>
                         <div class="remaining"></div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 75%" aria-valuenow="0"
+                                 aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
                     </div>
                     <div class="hand"></div>
                 </div>
@@ -74,8 +78,15 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-12">
-                        <div class="score float-end"></div>
                         <div class="name mb-2"></div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="tiles"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="score"></div>
                     </div>
                 </div>
             </div>
@@ -96,7 +107,6 @@
 <script src="js/jquery-ui.min.js"></script>
 <script th:inline="javascript">
     let ws = new WebSocketClient()
-    ws.debug = true;
     const gameId = /*[[${gameId}]]*/ 0;
     const state = {
         built: false,
@@ -435,7 +445,10 @@
         });
 
         //number of tiles left
-        $(".footer .remaining").html(`${game.bag.length} tiles remaining`);
+        const $footer = $(".footer");
+        $footer.find(".remaining").html(`${game.bag.length} tiles remaining`);
+        const percentage = Math.round((1.0 - (game.bag.length / 108)) * 100);
+        $footer.find(".progress .progress-bar").css("width", `${percentage}%`);
 
         //players
         const $players = $("#players");
@@ -448,6 +461,7 @@
                 $player = $template.find(".card").attr("data-color", player.color);
                 $player.find(".name").html(`<span class="${player.color.toLowerCase()}">&#11044;</span>&nbsp;<span>${player.name}</span>&nbsp;<span class="player-status"></span>`);
             }
+            $player.find(".tiles").html(`${player.hand.length} tiles`);
             $player.find(".score").html(`${player.score} points`);
             if (i === game.currentPlayerId) {
                 $player.addClass("active");
@@ -492,13 +506,23 @@
 
         //game over
         if (game.gameOver) {
-            $("#btnEndTurn")
-                .text("New game")
-                .removeClass("btn-secondary")
-                .addClass("btn-primary")
-                .off("click").on("click", function () {
-                window.location.href = "new";
-            });
+            showGameOverUI();
+        }
+    }
+
+    function showGameOverUI() {
+        $("#btnCommit")
+            .text("New game")
+            .removeClass("btn-secondary")
+            .addClass("btn-primary")
+            .off("click").on("click", function () {
+            window.location.href = "new";
+        });
+        $("#btnClear").hide();
+        $("#btnTrade").hide();
+        const $board = $("#board");
+        if ($board.parent().find(".game-over").length === 0) {
+            $('<div class="game-over"><div>Game Over<div></div>').insertAfter($board);
         }
     }
 

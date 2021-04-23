@@ -18,12 +18,11 @@ class GameManager {
             executor.scheduleAtFixedRate({
                 //purge any old games
                 try {
-                    val now = OffsetDateTime.now()
                     val it = instances.iterator()
                     while (it.hasNext()) {
                         val kv = it.next()
-                        if (kv.value.isGameOver() || now.isAfter(kv.value.created.plusHours(24))) {
-                            log.info("Purging old game ${kv.key} (gameOver=${kv.value.isGameOver()})")
+                        if (kv.value.isExpired()) {
+                            log.info("Purging old game ${kv.key}")
                             it.remove()
                         }
                     }

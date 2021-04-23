@@ -1,6 +1,7 @@
 package com.baraddur.qwirkle.board
 
 import com.baraddur.qwirkle.utils.pollRandom
+import com.fasterxml.jackson.annotation.JsonIgnore
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.util.*
@@ -10,6 +11,7 @@ class Game {
     val board: Board = Board()
     val bag: LinkedList<Tile> = LinkedList()
     val created = OffsetDateTime.now()
+    var ended: OffsetDateTime? = null
     val players = LinkedList<Player>()
     var currentPlayerId: Int = 0
     var pendingScore: Int = 0
@@ -21,6 +23,16 @@ class Game {
                     bag.add(Tile(type, color))
                 }
             }
+        }
+    }
+
+    @JsonIgnore
+    fun isExpired(): Boolean {
+        val now = OffsetDateTime.now()
+        return when {
+            OffsetDateTime.now().isAfter(created.plusHours(24)) -> true
+            ended != null -> now.isAfter(created.plusMinutes(10))
+            else -> false
         }
     }
 
@@ -116,6 +128,10 @@ class Game {
         } while (players[currentPlayerId] != player && players[currentPlayerId].hand.isEmpty())
         val newPlayer = players[currentPlayerId]
         log.info("New player ($newPlayer)")
+        //update game over status
+        if (isGameOver() && ended == null) {
+            ended = OffsetDateTime.now()
+        }
     }
 
     fun print() {
