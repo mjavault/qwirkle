@@ -89,6 +89,7 @@ class Game {
             }
             //put back the tiles that were put aside
             bag.addAll(aside)
+            moves.add(Move(Move.Type.TRADE, player, aside, 0))
             endTurn()
         } else {
             throw RuntimeException("You have tiles on the board, please clear them first before trading.")
@@ -105,9 +106,10 @@ class Game {
             player.score += pendingScore
             player.hand.removeAll(board.getPendingTiles())
             //keep track of the moves
-            moves.add(Move(player, board.getPendingTiles()))
+            moves.add(Move(Move.Type.PLAY, player, board.getPendingTiles(), pendingScore))
             //commit the play
             board.commit()
+            pendingScore = 0
             endTurn()
         } else {
             throw RuntimeException("This play is invalid.")

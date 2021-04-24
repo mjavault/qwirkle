@@ -58,16 +58,17 @@
                 <table id="board" class="board">
                 </table>
                 <div class="footer">
-                    <div class="float-end">
-                        <button class="btn btn-secondary" id="btnTrade">Trade</button>
-                        <button class="btn btn-secondary" id="btnClear">Clear</button>
-                        <button class="btn btn-secondary" id="btnCommit">Play</button>
-                        <br/>
-                        <div class="remaining"></div>
-                        <div class="progress">
-                            <div class="progress-bar" role="progressbar" style="width: 75%" aria-valuenow="0"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
+                    <div class="player"></div>
+                    <div class="actions">
+                        <button class="btn btn-primary" id="btnTrade"><i
+                                class="fas fa-exchange fa-2x"></i><br/>Trade
+                        </button>
+                        <button class="btn btn-primary" id="btnClear"><i
+                                class="fas fa-trash-alt fa-2x"></i><br/>Clear
+                        </button>
+                        <button class="btn btn-primary" id="btnCommit"><i
+                                class="fas fa-check fa-2x"></i><br/>Play
+                        </button>
                     </div>
                     <div class="hand"></div>
                 </div>
@@ -75,6 +76,25 @@
             <div class="col-12 col-xl-2">
                 <h1 class="d-none d-xl-block">Qwirkle</h1>
                 <div id="players" class="row"></div>
+                <div class="history-list d-none d-xl-block">
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <ul id="history"></ul>
+                        </div>
+                    </div>
+                </div>
+                <div id="bag" class="d-none d-xl-block">
+                    <div class="card mb-2">
+                        <div class="card-body text-center">
+                            <div class="progress" style="background-color: #0d6efd;">
+                                <div class="progress-bar" role="progressbar" style="background-color: #e9ecef;"
+                                     aria-valuenow="0"
+                                     aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="remaining"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -180,7 +200,11 @@
         });
         $("#btnClear").on("click", function () {
             abort();
+            $(".hand .holder").removeClass("selected");
         });
+
+        // clear the higlight when leaving the history list
+        $("#history").on("mouseleave", () => highlight());
 
         $(window).on('resize', function () {
             const $window = $(this);
@@ -337,6 +361,13 @@
         });
     }
 
+    function highlight(tiles, color) {
+        $(".highlight").removeClass("highlight green blue yellow red");
+        $.each(tiles, function (i, tile) {
+            $(`#${tile.id}`).addClass(`highlight ${color.toLowerCase()}`);
+        });
+    }
+
     function createTile(tile) {
         function shape(name) {
             if (name === "CIRCLE") {
@@ -467,21 +498,22 @@
         });
 
         //number of tiles left
-        const $footer = $(".footer");
-        $footer.find(".remaining").html(`${game.bag.length} tiles remaining`);
+        const $bag = $("#bag");
+        $bag.find(".remaining").html(`${game.bag.length} tiles remaining`);
         const percentage = Math.round((1.0 - (game.bag.length / 108)) * 100);
-        $footer.find(".progress .progress-bar").css("width", `${percentage}%`);
+        $bag.find(".progress .progress-bar").css("width", `${percentage}%`);
 
         //players
         const $players = $("#players");
         $.each(game.players, function (i, player) {
             //player details
+            const playerDetails = `<span class="${player.color.toLowerCase()}">&#11044;</span>&nbsp;<span>${player.name}</span>&nbsp;<span class="player-status"></span>`;
             let $player = $players.find(`[data-color=${player.color}]`);
             if ($player.length === 0) {
                 const $template = $("#templatePlayer").clone().removeAttr("id");
                 $players.append($template);
                 $player = $template.find(".card").attr("data-color", player.color);
-                $player.find(".name").html(`<span class="${player.color.toLowerCase()}">&#11044;</span>&nbsp;<span>${player.name}</span>&nbsp;<span class="player-status"></span>`);
+                $player.find(".name").html(playerDetails);
             }
             $player.find(".tiles").html(`${player.hand.length} tiles`);
             $player.find(".score").html(`${player.score} points`);
@@ -492,8 +524,11 @@
             }
 
             //current player hand
-            if (state.localPlayers.includes(player.color)) {
-                const $hand = $(".hand");
+            const $footer = $(".footer");
+            if (state.localPlayers.includes(player.color) &&
+                (game.currentPlayer.color === player.color || $footer.find(".tile").length === 0)) {
+                $footer.find(".player").html(playerDetails);
+                const $hand = $footer.find(".hand");
                 //delete tiles that are not in the hand anymore
                 $hand.find(".tile").each(function (i, tile) {
                     if (!player.hand.find(t => t.id === tile.id)) {
@@ -521,13 +556,31 @@
             }
         });
 
+        //play history
+        const $history = $("#history");
+        const lastIndex = $history.data("index") || 0;
+        $.each(game.moves, function (i, entry) {
+            if (i >= lastIndex) {
+                const $item = $("<li></li>");
+                let content = `<span class="${entry.player.color.toLowerCase()}">&#11044;</span>&nbsp;${entry.player.name} `;
+                if (entry.type === "PLAY") {
+                    content += `scored ${entry.score} points`;
+                } else if (entry.type === "TRADE") {
+                    content += `traded ${entry.tiles.length} tiles`;
+                }
+                $item.html(content);
+                $item.on("mouseover", function () {
+                    highlight(entry.tiles, entry.player.color);
+                });
+                $history.prepend($item);
+            }
+        });
+        $history.data("index", game.moves.length);
+
         //highlight the last move
         if (game.moves && game.moves.length > 0) {
-            $(".highlight").removeClass("highlight green blue yellow red");
             const move = game.moves[game.moves.length - 1];
-            $.each(move.tiles, function (i, tile) {
-                $(`#${tile.id}`).addClass(`highlight ${move.player.color.toLowerCase()}`);
-            });
+            highlight(move.tiles, move.player.color);
         }
 
         //local player
