@@ -137,6 +137,9 @@ class Game {
         //update game over status
         if (isGameOver() && ended == null) {
             ended = OffsetDateTime.now()
+            //first player to end the game gains 6 bonus points
+            player.score += 6
+            moves.add(Move(Move.Type.BONUS, player, emptyList(), 6))
         }
     }
 

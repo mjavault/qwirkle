@@ -122,7 +122,7 @@
 }
 
 .blue {
-    color: #1e6aff;
+    color: #007aff;
 }
 
 .card.active {
@@ -142,7 +142,7 @@
 }
 
 .hover.blue .tile, .hover.blue .placeholder, .highlight.blue {
-    border-color: #1e6aff;
+    border-color: #007aff;
 }
 
 .toast-container {
@@ -170,6 +170,7 @@
     border: 1px solid #9A9A9A;
     border-radius: 4px;
     background-color: #ffffff;
+    z-index: 5;
 }
 
 .footer .hand {
@@ -246,6 +247,7 @@
     bottom: 0;
     background: #cccccc69;
     text-align: center;
+    z-index: 4;
 }
 
 .game-over div {

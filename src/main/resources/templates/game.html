@@ -568,6 +568,8 @@
                     content += `+${entry.score} points`;
                 } else if (entry.type === "TRADE") {
                     content += `traded ${entry.tiles.length}`;
+                } else if (entry.type === "BONUS") {
+                    content += `+${entry.score} bonus`;
                 }
                 $item.html(content);
                 $item.on("mouseover", function () {
