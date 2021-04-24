@@ -77,10 +77,10 @@ class Board {
                             }
                         } while (more)
                     }
-                    //a score of 1 means the tile is not connected to anything on this axis - it actually means 0
-                    val correctedLineScore = when (lineScore) {
-                        1 -> 0
-                        6 -> 12
+                    //a score of 1 is only allowed when the board is empty
+                    val correctedLineScore = when {
+                        lineScore == 1 && isNotEmpty() -> 0
+                        lineScore == 6 -> 12
                         else -> lineScore
                     }
                     score += correctedLineScore

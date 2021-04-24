@@ -2,6 +2,7 @@
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
 <header>
     <title>Qwirkle</title>
+    <link rel="icon" href="favicon.ico"/>
     <link rel="shortcut icon" type="image/png" href="favicon.png"/>
     <script defer src="js/all.js"></script> <!-- Font-awesome -->
     <link href="css/bootstrap.min.css" rel="stylesheet"/>
@@ -188,7 +189,8 @@
 
         //drag and drop
         $(".hand").sortable({
-            axis: "x"
+            axis: "x",
+            distance: 10
         });
 
         //play
@@ -562,11 +564,11 @@
         $.each(game.moves, function (i, entry) {
             if (i >= lastIndex) {
                 const $item = $("<li></li>");
-                let content = `<span class="${entry.player.color.toLowerCase()}">&#11044;</span>&nbsp;${entry.player.name} `;
+                let content = `<span class="${entry.player.color.toLowerCase()}">&#11044;</span>&nbsp;${entry.player.name}: `;
                 if (entry.type === "PLAY") {
-                    content += `scored ${entry.score} points`;
+                    content += `+${entry.score} points`;
                 } else if (entry.type === "TRADE") {
-                    content += `traded ${entry.tiles.length} tiles`;
+                    content += `traded ${entry.tiles.length}`;
                 }
                 $item.html(content);
                 $item.on("mouseover", function () {
