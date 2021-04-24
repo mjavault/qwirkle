@@ -47,7 +47,7 @@
         $("#frmCreateGame").on("submit", function (e) {
             e.preventDefault();
             $.ajax({
-                url: "/api/game",
+                url: "api/game",
                 method: "POST"
             }).done(function (data) {
                 window.location.href = `game?id=${data.gameId}`;

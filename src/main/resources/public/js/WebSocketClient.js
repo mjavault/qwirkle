@@ -13,9 +13,9 @@ class WebSocketClient {
 
     connect() {
         this.autoReconnect = true;
-        const l = window.location;
-        const url = ((l.protocol === "https:") ? "wss://" : "ws://") + l.host + "/ws/game";
-        this.ws = new WebSocket(url);
+        const url = new URL('ws/game', window.location.href);
+        url.protocol = url.protocol.replace('http', 'ws');
+        this.ws = new WebSocket(url.href);
 
         this.ws.onopen = (event) => {
             console.log("[open] Connection established");
