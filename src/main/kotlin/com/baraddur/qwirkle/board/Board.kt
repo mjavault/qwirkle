@@ -77,10 +77,10 @@ class Board {
                             }
                         } while (more)
                     }
-                    //a score of 1 is only allowed when the board is empty
-                    val correctedLineScore = when {
-                        lineScore == 1 && isNotEmpty() -> 0
-                        lineScore == 6 -> 12
+                    //a score of 1 means there is only the current tile on that axis, and is actually worth 0
+                    val correctedLineScore = when (lineScore) {
+                        1 -> 0
+                        6 -> 12
                         else -> lineScore
                     }
                     score += correctedLineScore
@@ -91,9 +91,17 @@ class Board {
             }
             log.debug("Score after tile: $score")
         }
-        if (isNotEmpty() && !connected) {
-            error = true
-            tiles.filter { it.pending }.forEach { it.error = true }
+        if (isNotEmpty()) {
+            if (!connected) {
+                error = true
+                tiles.filter { it.pending }.forEach { it.error = true }
+            }
+        } else {
+            // a score of 0 can happen when the user plays a single tile during the first turn
+            // in that case (and only then) is this actually worth 1 point
+            if (score == 0) {
+                score = 1;
+            }
         }
         log.debug("Total score: $score (error=$error)")
         return if (error) 0 else score
