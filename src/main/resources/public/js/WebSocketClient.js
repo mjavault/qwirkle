@@ -1,9 +1,12 @@
 class WebSocketClient {
-    constructor() {
+    constructor(uri) {
+        this.uri = uri;
         this.ws = null
         this.onMessage = null;
         this.onConnect = null;
+        this.keepAlive = null;
         this.autoReconnect = false;
+        this.autoReconnectPending = false;
         this.debug = false;
     }
 
@@ -12,8 +15,9 @@ class WebSocketClient {
     }
 
     connect() {
+        this.autoReconnectPending = false;
         this.autoReconnect = true;
-        const url = new URL('ws/game', window.location.href);
+        const url = new URL(this.uri, window.location.href);
         url.protocol = url.protocol.replace('http', 'ws');
         this.ws = new WebSocket(url.href);
 
@@ -38,15 +42,17 @@ class WebSocketClient {
             } else {
                 console.log('[close] Connection died');
             }
-            if (this.autoReconnect) {
+            if (this.autoReconnect && !this.autoReconnectPending) {
+                this.autoReconnectPending = true;
                 setTimeout(() => this.connect(), 5000);
                 console.log('Reconnecting in 5 seconds');
             }
         };
 
-        this.ws.onerror = (error) => {
-            console.log('Error: ' + error);
-            if (this.autoReconnect) {
+        this.ws.onerror = (event) => {
+            console.log('[error] Connection error, eventPhase=' + event.eventPhase);
+            if (this.autoReconnect && !this.autoReconnectPending) {
+                this.autoReconnectPending = true;
                 setTimeout(() => this.connect(), 5000);
                 console.log('Reconnecting in 5 seconds');
             }
@@ -59,6 +65,18 @@ class WebSocketClient {
             this.ws.close();
             this.ws = null;
         }
+    }
+
+    setKeepAlive(fn, seconds) {
+        this.keepAlive = fn;
+        setInterval(() => {
+            if (this.debug) {
+                console.log(`Keep alive (readyState=${this.ws.readyState})`);
+            }
+            if (this.ws.readyState === WebSocket.OPEN) {
+                this.keepAlive();
+            }
+        }, seconds * 1000);
     }
 
     send(topic, data) {

@@ -37,6 +37,9 @@ class WebSocketHandler {
         log.debug("Session ${session.remoteAddress}: $message")
         val event = objectMapper().readValue<Event>(message)
         when (event.topic) {
+            "/api/ping" -> {
+                send(session, mapOf("ping" to "pong"))
+            }
             "/api/register" -> {
                 val data = objectMapper().treeToValue<RegisterEvent>(event.data)!!
                 GameManager.get(data.gameId)?.also { game ->

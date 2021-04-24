@@ -145,7 +145,7 @@
 <script src="js/jquery-ui.min.js"></script>
 <script th:inline="javascript">
     const notifications = new Notify();
-    let ws = new WebSocketClient();
+    let ws = new WebSocketClient('ws/game');
     const gameId = /*[[${gameId}]]*/ 0;
     const state = {
         built: false,
@@ -250,6 +250,7 @@
             ws.send("/api/register", {gameId: gameId});
             uiStepConnected();
         }
+        ws.setKeepAlive(() => ws.send("/api/ping"), 30);
         ws.connect();
     });
 
