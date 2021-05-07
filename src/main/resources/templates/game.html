@@ -142,7 +142,7 @@
 <script src="js/WebSocketClient.js"></script>
 <script src="js/Notify.js"></script>
 <script src="js/jquery-3.2.1.min.js"></script>
-<script src="js/jquery-ui.min.js"></script>
+<script src="js/Sortable.min.js"></script>
 <script th:inline="javascript">
     const notifications = new Notify();
     let ws = new WebSocketClient('ws/game');
@@ -187,10 +187,10 @@
             }
         });
 
-        //drag and drop
-        $(".hand").sortable({
-            axis: "x",
-            distance: 10
+        Sortable.create($(".hand")[0], {
+            direction: "horizontal",
+            animation: 150,
+            fallbackTolerance: 10
         });
 
         //play
@@ -544,8 +544,6 @@
                         $container.append(createTile(tile));
                         $container.on("click", function (e) {
                             const $this = $(this);
-                            // bugfix for the sortable() call forcing css styles
-                            $this.css("top", "");
                             if ($this.hasClass("selected")) {
                                 $this.removeClass("selected");
                             } else {
