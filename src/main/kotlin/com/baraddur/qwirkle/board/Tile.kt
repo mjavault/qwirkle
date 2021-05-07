@@ -30,4 +30,12 @@ data class Tile(var shape: Shape, var color: Color) {
             fun of(char: Char) = values().find { it.representation == char }
         }
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        return id == (other as Tile).id
+    }
+
+    override fun hashCode(): Int = id.hashCode()
 }

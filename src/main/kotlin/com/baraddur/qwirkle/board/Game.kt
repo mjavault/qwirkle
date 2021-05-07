@@ -43,16 +43,11 @@ class Game {
 
     fun addPlayer(name: String, color: PlayerColor) {
         if (players.size < 4) {
-            addPlayer(Player(name, color))
+            val player = Player(name, color)
+            players.add(player)
+            player.draw()
         } else {
             throw RuntimeException("A player with the same color already exist.")
-        }
-    }
-
-    private fun addPlayer(player: Player) {
-        players.add(player)
-        while (player.hand.size < 6 && bag.isNotEmpty()) {
-            player.hand.add(bag.pollRandom())
         }
     }
 
@@ -63,36 +58,38 @@ class Game {
         if (tiles.size != tileIds.size) {
             throw RuntimeException("Invalid tiles.")
         }
+        log.info("Playing: $tiles")
         //play the tiles
         pendingScore = board.play(tiles, position, direction)
     }
 
     fun trade(tileIds: List<String>) {
-        //prevent the user from accidentally clicking trade when they meant to click commit
-        if (!board.isPending()) {
-            val player = players[currentPlayerId]
-            val aside = LinkedList<Tile>()
-            tileIds.forEach { id ->
-                player.hand.find { it.id == id }?.let { tile ->
-                    aside.add(tile)
-                    player.hand.remove(tile)
+        if (tileIds.isNotEmpty()) {
+            //prevent the user from accidentally clicking trade when they meant to click commit
+            if (!board.isPending()) {
+                val player = players[currentPlayerId]
+                val aside = LinkedList<Tile>()
+                tileIds.forEach { id ->
+                    player.hand.find { it.id == id }?.let { tile ->
+                        aside.add(tile)
+                        player.hand.remove(tile)
+                    }
                 }
+                log.info("Trading: $aside")
+                //make sure we have enough tiles in the bag
+                if (bag.size < aside.size) {
+                    player.hand.addAll(aside)
+                    throw RuntimeException("Not enough tiles in the bag - you can trade at most ${bag.size} tiles.")
+                }
+                //draw more tiles
+                player.draw()
+                //put back the tiles that were put aside
+                bag.addAll(aside)
+                moves.add(Move(Move.Type.TRADE, player, aside, 0))
+                endTurn()
+            } else {
+                throw RuntimeException("You have tiles on the board, please clear them first before trading.")
             }
-            //make sure we have enough tiles in the bag
-            if (bag.size < aside.size) {
-                player.hand.addAll(aside)
-                throw RuntimeException("Not enough tiles in the bag - you can trade at most ${bag.size} tiles.")
-            }
-            //draw more tiles
-            while (player.hand.size < 6) {
-                player.hand.add(bag.pollRandom())
-            }
-            //put back the tiles that were put aside
-            bag.addAll(aside)
-            moves.add(Move(Move.Type.TRADE, player, aside, 0))
-            endTurn()
-        } else {
-            throw RuntimeException("You have tiles on the board, please clear them first before trading.")
         }
     }
 
@@ -120,9 +117,7 @@ class Game {
         val player = players[currentPlayerId]
         log.info("Pass ($player)")
         //draw more tiles
-        while (player.hand.size < 6 && bag.isNotEmpty()) {
-            player.hand.add(bag.pollRandom())
-        }
+        player.draw()
         //clean up state
         pendingScore = 0
         //move on to the next active player (or current player if game over)
@@ -145,5 +140,11 @@ class Game {
 
     fun print() {
         board.print()
+    }
+
+    private fun Player.draw() {
+        while (hand.size < 6 && bag.isNotEmpty()) {
+            hand.add(bag.pollRandom())
+        }
     }
 }
